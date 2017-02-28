@@ -1,7 +1,9 @@
 {% extends "exp/base_user.html" %}
+{% load staticfiles %}
+{% load static %}
 {% block title %}Editar Motorizado{% endblock %}
 {% block addcss_user %}
-	<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}css/flora.datepick.css">
+	<link rel="stylesheet" type="text/css" href="{% static 'css/flora.datepick.css' %}">
 	<style type="text/css">
 		#id_tipo{
 			height: 45px !important;
@@ -59,19 +61,19 @@
 {% endblock %}
 
 {% block addjs %}
-<script type="text/javascript" src="{{ STATIC_URL }}js/jquery.plugin.js"></script>
-<script type="text/javascript" src="{{ STATIC_URL }}js/jquery.datepick.js"></script>
-<script type="text/javascript" src="{{ STATIC_URL }}js/jquery.datepick-es.js"></script>
-<script type="text/javascript" src="{{ STATIC_URL }}api/js/md5.js">
+<script type="text/javascript" src='{% static "js/jquery.plugin.js" %}'></script>
+<script type="text/javascript" src='{% static "js/jquery.datepick.js" %}'></script>
+<script type="text/javascript" src='{% static "js/jquery.datepick-es.js" %}'></script>
+<script type="text/javascript" src='{% static "api/js/md5.js" %}'>
 <script type="text/javascript">
 	$( document ).ready(function() {
 		$('.ui.dropdown').dropdown();
 	});
 </script>
 <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
-<script type="text/javascript" src="{{ STATIC_URL }}api/js/jquery.qrcode.js"></script>
+<script type="text/javascript" src="{% static 'api/js/jquery.qrcode.js' %}"></script>
 <script type="text/javascript">
-	var socket = io('http://104.236.33.228:4000');
+	var socket = io("http://104.236.33.228:4000");
 		socket.emit('who-i-am',{'web_id':calcMD5($('#empresa').val()),'motorizado':$('#motorizado').val()})
   	//socket.emit('hola', {'web_id': '123456', 'cell_id': 'Hola mundo'});
   	socket.on('you-are',function(data){

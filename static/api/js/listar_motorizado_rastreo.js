@@ -87,7 +87,7 @@ window.explat.cargarMotorizados = function(q, pag, sub, rq) {
 };
 
 function enviarPedido() {
-    var res = {"token":"1913bb7180af8ecf340b507ff9ca4f7b",
+    var res = {"token":"923828d416d4b0abf25f320340b8433d",
         "pedido": [{
             "id": "ws_ped",
             "cliente": {
@@ -99,7 +99,7 @@ function enviarPedido() {
                 "fijo":"6605648"
             },
             "tienda": {
-                "identificador": "3"
+                "identificador": "5"
             },
             "descripcion": [{
                 "nombre": "jajaja",
@@ -123,7 +123,7 @@ function enviarPedido() {
                 "fijo":"6605648"
             },
             "tienda": {
-                "identificador": "123456"
+                "identificador": "5"
             },
             "descripcion": [{
                 "nombre": "jajaja",

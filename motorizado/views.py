@@ -24,6 +24,7 @@ from django.contrib.auth.decorators import login_required
 from datetime import date, timedelta
 from . import models
 from django.db.models import Q
+from exp.settings import HOST_NODE, PORT_NODE
 
 
 @login_required(login_url=settings.LOGIN_URL)
@@ -107,7 +108,7 @@ def editMotorizado(request, motorizado_id):
             motorizados = models.Motorizado.objects.filter(
                 empleado__id=request.user.id)
             mensaje = {'tipo': 'success',
-                       'texto': "Se a editado un motorizado correctamente"}
+                       'texto': "Se a editado un motorizado correctamente", 'host_node': '%s:%d' % (HOST_NODE, PORT_NODE)}
             return render(request, 'motorizado/motorizado.html', {'mensaje': mensaje, 'motorizados': motorizados})
     else:
         emp = usuario.Empresa.objects.filter(
@@ -279,7 +280,7 @@ class SearchMotorizadoPed(View):
 class InfoMotorizado(supra.SupraListView):
     model = models.Motorizado
     search_key = 'q'
-    list_display = ['identificador', 'nombre', 'apellidos', 'foto']
+    list_display = ['identificador', 'nombre', 'apellidos', 'foto','tirilla','cancelar','cerrar','descripcion']
     search_fields = ['identifier']
     list_filter = ['identifier']
     paginate_by = 1
@@ -290,6 +291,37 @@ class InfoMotorizado(supra.SupraListView):
         apellidos = 'empleado__last_name'
         foto = 'empleado__foto'
     # end class
+
+    def get_queryset(self):
+        queryset = super(InfoMotorizado, self).get_queryset()
+        tirilla ="""
+        select case when m.tipo=1 then tirillatp1 else tirillatp2 end as tirrilla
+		 from motorizado_motorizado as m
+		 inner join usuario_empleado as e on (m.empleado_id=e.usuario_ptr_id and "motorizado_motorizado"."id"=m.id)
+         inner join pedido_configuracionpedido as c on (e.empresa_id=c.empresa_id and c.estado=true) limit 1
+        """
+        cerrar ="""
+        select case when m.tipo=1 then cerrartp1 else cerrartp2 end as cerrar
+		 from motorizado_motorizado as m
+		 inner join usuario_empleado as e on (m.empleado_id=e.usuario_ptr_id and "motorizado_motorizado"."id"=m.id)
+         inner join pedido_configuracionpedido as c on (e.empresa_id=c.empresa_id and c.estado=true) limit 1
+        """
+        cancelar ="""
+        select case when m.tipo=1 then cancelartp1 else cancelartp2 end as cancelar
+		 from motorizado_motorizado as m
+		 inner join usuario_empleado as e on (m.empleado_id=e.usuario_ptr_id and "motorizado_motorizado"."id"=m.id)
+         inner join pedido_configuracionpedido as c on (e.empresa_id=c.empresa_id and c.estado=true) limit 1
+        """
+        desc ="""
+        select case when m.tipo=1 then descripciontp1 else descripciontp2 end as descripcion
+		 from motorizado_motorizado as m
+		 inner join usuario_empleado as e on (m.empleado_id=e.usuario_ptr_id and "motorizado_motorizado"."id"=m.id)
+         inner join pedido_configuracionpedido as c on (e.empresa_id=c.empresa_id and c.estado=true) limit 1
+        """
+        # return queryset.filter(tipo=1)
+        return queryset.extra(select={'tirilla':tirilla,'cancelar':cancelar, 'cerrar':cerrar,'descripcion':desc})
+    # end def
+
 # end class
 
 
@@ -422,17 +454,61 @@ class ListNotificaciones(TemplateView):
 class ValidListNotificaciones(supra.SupraListView):
     model = models.Moto
     search_key = 'q'
-    list_display = ['tipo']
+    list_display = ['soat_','tecno_','tipo','identificador','placa','motorizado__empleado__first_name']
     search_fields = ['tipo']
     list_filter = ['tipo']
     paginate_by = 100000
+
+    class Renderer:
+        identificador = 'motorizado__identifier'
+    # end class
 
     def get_queryset(self):
         queryset = super(ValidListNotificaciones, self).get_queryset()
         today = date.today()
         this_date_plus_five_days = today + timedelta(days=20)
+        query_soat = """
+        select case when cast(s."fecha_expiracionS" as date)> current_date and cast(s."fecha_expiracionS" as date) <= now()  + interval '480 hour' then 'false' else tablameses(s."fecha_expiracionS") end as soat from motorizado_moto as m
+		 left join motorizado_soat as s on (m.soat_id=s.id) where m.id="motorizado_moto"."id" limit 1
+        """
+        query_tecno = """
+        select case when cast(t."fecha_expiracionT" as date)> current_date and cast(t."fecha_expiracionT" as date) <= now()  + interval '480 hour' then 'false' else tablameses(t."fecha_expiracionT") end as soat from motorizado_moto as m
+		 left join motorizado_tecno as t on (m.tecno_id=t.id) where m.id="motorizado_moto"."id" limit 1
+        """
         return queryset.filter(Q(empresaM__empleado__id=self.request.user.id)).filter(
             (Q(soat__fecha_expiracionS__range=[today, this_date_plus_five_days]) |
-             Q(tecno__fecha_expiracionT__range=[today, this_date_plus_five_days])))
+             Q(tecno__fecha_expiracionT__range=[today, this_date_plus_five_days]))).extra(select={'soat_':query_soat,'tecno_':query_tecno})
+    # end def
+# end class
+
+
+class ValidSoatTecno(supra.SupraListView):
+    model = models.Moto
+    search_key = 'q'
+    list_display = ['soat_','tecno_','tipo','identificador','placa']
+    search_fields = ['motorizado__identifier']
+    list_filter = ['motorizado__identifier']
+    paginate_by = 100000
+
+    class Renderer:
+        identificador = 'motorizado__identifier'
+    # end class
+
+    def get_queryset(self):
+        queryset = super(ValidSoatTecno, self).get_queryset()
+        today = date.today()
+        this_date_plus_five_days = today + timedelta(days=20)
+        query_soat = """
+        select case when cast(s."fecha_expiracionS" as date)> current_date and cast(s."fecha_expiracionS" as date) <= now()  + interval '480 hour' then tablameses(s."fecha_expiracionS") else 'false' end as soat from motorizado_moto as m
+		 left join motorizado_soat as s on (m.soat_id=s.id) where m.id="motorizado_moto"."id" limit 1
+        """
+        query_tecno = """
+        select case when cast(t."fecha_expiracionT" as date)> current_date and cast(t."fecha_expiracionT" as date) <= now()  + interval '480 hour' then  tablameses(t."fecha_expiracionT") else 'false' end as soat from motorizado_moto as m
+		 left join motorizado_tecno as t on (m.tecno_id=t.id) where m.id="motorizado_moto"."id" limit 1
+        """
+        return queryset.filter(Q(empresaM__empleado__id=self.request.user.id)).filter(
+            (Q(soat__fecha_expiracionS__range=[today, this_date_plus_five_days]) |
+             Q(tecno__fecha_expiracionT__range=[today, this_date_plus_five_days]))).extra(select={'soat_':query_soat,'tecno_':query_tecno})
+        # return queryset.extra(select={'soat_':query_soat,'tecno_':query_tecno})
     # end def
 # end class

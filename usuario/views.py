@@ -14,12 +14,14 @@ from django.db import connection
 from motorizado import models as motorizado
 # from braces.views import AjaxResponseMixin, JSONResponseMixin
 from django.views.generic import View
+from motorizado import models as motorizado
 from django.views import generic
 from django.views.generic.edit import UpdateView
 from django.contrib.auth.views import login, logout
 from django.views.generic import TemplateView
 from django.contrib.auth.decorators import login_required
 from exp.settings import LOGIN_URL
+from django.contrib.auth.models import User
 
 class IndexCliente(TemplateView):
 
@@ -156,6 +158,35 @@ def editEmpleado(request, empleado_id):
         form.fields["tienda"].queryset = models.Tienda.objects.filter(empresa__empleado__id=request.user.id)
     return render(request, 'usuario/editEmpleado.html', {'form': form, 'empleado': empleado})
 # end def
+
+
+class SetPassWord(View):
+    
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super(SetPassWord, self).dispatch(request, *args, **kwargs)
+    # end def
+    
+    def get(self, request, *args, **kwargs):
+        return render(request, 'usuario/set_password.html',{'form':forms.ChangePasswordForm()})
+    # end def
+
+    def post(self, request, *args, **kwargs):# 359291054481645
+        password = request.POST.get('password',False)
+        identificador = request.POST.get('identificador',False)
+        if password and identificador :
+            motori = motorizado.Motorizado.objects.filter(identifier=request.POST.get('identificador','0')).first()
+            if motori :
+                    usuario = User.objects.filter(usuario__empleado=motori.empleado).first()
+                    usuario.set_password(raw_password=password)
+                    usuario.save()
+                    return HttpResponse('{"r":"Ok"}', content_type="application/json", status=200)
+            # end if
+            return HttpResponse('{"r":"Campos invalidos"}', content_type="application/json", status=400)
+        # end if
+        return HttpResponse('{"r":"Campos requeridos"}', content_type="application/json", status=400)
+    # end def
+#
 
 
 class ClienteAdd(FormView):

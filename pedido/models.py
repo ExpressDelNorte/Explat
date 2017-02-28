@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from django.db import models
 from usuario.models import Cliente,  Empleado,  Empresa, Tienda
 import re
@@ -183,7 +184,7 @@ class Punto(models.Model):
 class ConfirmarPedido(models.Model):
     pedido = models.ForeignKey(Pedido)
     fecha = models.DateTimeField(auto_now=True)
-    imagen = models.ImageField(upload_to='confirmarpedido/')
+    imagen = models.ImageField(upload_to='confirmarpedido/', null=True, blank=True)
 
     class Meta:
         verbose_name = "Confirmacion Pedido"
@@ -246,10 +247,62 @@ class ConfiguracionTiempo(models.Model):
 # end class
 
 
+class LogEnvio(models.Model):
+    tienda = models.CharField(max_length=1000)
+    status = models.CharField(max_length=1000)
+    response = models.CharField(max_length=10000)
+    data = models.CharField(max_length=100000)
+
+    def __unicode__(self):
+        return unicode(self.empresa)
+    # end def
+# end class
+
+
+class ConfiguracionPedido(models.Model):
+    empresa =  models.ForeignKey(Empresa)
+    tirillatp1 = models.IntegerField(choices= ((1,'Con total'), (2,'Sin total')), verbose_name="Motorizados planta", default=1)
+    tirillatp2 = models.IntegerField(choices= ((1,'Con total'), (2,'Sin total')), verbose_name="Motorizados suscripcion", default=1)
+    cerrartp1 = models.IntegerField(choices= ((1,'Con Foto'), (2,'Con Botón')), verbose_name="Motorizados planta", default=1)
+    cerrartp2 = models.IntegerField(choices= ((1,'Con Foto'), (2,'Con Botón')), verbose_name="Motorizados suscripcion", default=1)
+    cancelartp1 = models.IntegerField(choices= ((1,'Con Foto'), (2,'Con Botón')), verbose_name="Motorizados planta", default=1)
+    cancelartp2 = models.IntegerField(choices= ((1,'Con Foto'), (2,'Con Botón')), verbose_name="Motorizados suscripcion", default=1)
+    descripciontp1 = models.IntegerField(choices= ((1,'Con Descripcion'), (2,'Sin Descripcion')), verbose_name="Motorizados planta", default=1)
+    descripciontp2 = models.IntegerField(choices= ((1,'Con Descripcion'), (2,'Sin Descripcion')), verbose_name="Motorizados suscripcion", default=1)
+    estado = models.BooleanField(default=True)
+
+    def __unicode__(self):
+        return u'%s'%self.empresa.first_name
+    # end def
+
+    def __str__(self):
+        return u'%s'%self.empresa.first_name
+    # end def
+# end class
+
+
+class MotivoCancelacion(models.Model):
+    configuracion = models.ForeignKey(ConfiguracionPedido)
+    nombre = models.CharField(max_length=300, unique=True)
+    descripcion = models.CharField(max_length=800, null=True, blank=True)
+    estado = models.BooleanField(default=True)
+
+    def __unicode__(self):
+        return u'%s'%self.nombre
+    # end def
+
+    def __str__(self):
+        return u'%s'%self.nombre
+    # end def
+# end class
+
+
 class CancelarPedido(models.Model):
     pedido = models.ForeignKey(Pedido)
+    motivo = models.ForeignKey(MotivoCancelacion)
     fecha = models.DateTimeField(auto_now=True)
-    imagen = models.ImageField(upload_to='cancelarp/')
+    observacion = models.CharField(max_length=500)
+    imagen = models.ImageField(upload_to='cancelarp/', null=True, blank=True)
 
     class Meta:
         verbose_name = "Cancelar Pedido"
@@ -264,8 +317,10 @@ class CancelarPedido(models.Model):
 
 class CancelarPedidoWs(models.Model):
     pedido = models.ForeignKey(PedidoWS)
+    motivo = models.ForeignKey(MotivoCancelacion)
     fecha = models.DateTimeField(auto_now=True)
-    imagen = models.ImageField(upload_to='cancelarpw/')
+    observacion = models.CharField(max_length=500)
+    imagen = models.ImageField(upload_to='cancelarpw/', null=True, blank=True)
 
     class Meta:
         verbose_name = "Cancelar PedidoWS"
@@ -274,17 +329,5 @@ class CancelarPedidoWs(models.Model):
 
     def __unicode__(self):
         return unicode(self.pedido.num_pedido)
-    # end def
-# end class
-
-
-class LogEnvio(models.Model):
-    tienda = models.CharField(max_length=1000)
-    status = models.CharField(max_length=1000)
-    response = models.CharField(max_length=10000)
-    data = models.CharField(max_length=100000)
-
-    def __unicode__(self):
-        return unicode(self.empresa)
     # end def
 # end class

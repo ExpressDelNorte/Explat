@@ -27,6 +27,8 @@ import json
 from socketIO_client import SocketIO, LoggingNamespace
 from supra.auths import methods, oauth
 from . import service
+from exp.settings import HOST_NODE, PORT_NODE
+
 
 class Despacho(TemplateView):
     template_name = 'pedido/despacharpedido.html'
@@ -51,7 +53,6 @@ class AddPedido(View):
 class AddPedidoAdmin(View):
 
     def get(self, request, *args, **kwargs):
-        print 'llegando'
         empresa = mod_usuario.Empresa.objects.filter(
             empleado__id=request.user.id).first()
         if empresa is None:
@@ -76,12 +77,10 @@ class AddPedidoAdmin(View):
         motorizado = mod_usuario.Empleado.objects.filter(
             identificacion=request.POST['motorizado']).first()
         if motorizado:
-            print 'Llego 2'
             formP = forms.AddPedidoAdminApiForm(request.POST)
             empresa = mod_usuario.Empresa.objects.filter(
                 empleado__id=request.user.id).first()
             if formP.is_valid():
-                print 'Llego 3'
                 form = formP.save(commit=False)
                 form.motorizado = motorizado
                 form.empresa = empresa
@@ -159,7 +158,7 @@ class EditPedido(FormView):
                 row = cursor.fetchone()
                 lista = row[0]
                 if lista:
-                    with SocketIO('104.236.33.228', 4000, LoggingNamespace) as socketIO:
+                    with SocketIO(HOST_NODE, PORT_NODE, LoggingNamespace) as socketIO:
                         socketIO.emit('modificar-motorizado-pedido', {
                             'pedido': lista[0], 'tipo': 1, 'retraso': lista[0]['retraso'], 'mot_anterior': motor_ant, 'mot_siguiente': motor_sig})
                         socketIO.wait(seconds=0)
@@ -253,13 +252,13 @@ class FinalizarPedido(View):
                         lista = row[0]
                         if lista:
                             if not pedido.confirmado:
-                                with SocketIO('104.236.33.228', 4000, LoggingNamespace) as socketIO:
+                                with SocketIO(HOST_NODE, PORT_NODE, LoggingNamespace) as socketIO:
                                     socketIO.emit('modificar-pedido', {
                                                   'pedido': lista[0], 'tipo': 1, 'retraso': lista[0]['retraso']})
                                     socketIO.wait(seconds=0)
                                 # end with
                             else:
-                                with SocketIO('104.236.33.228', 4000, LoggingNamespace) as socketIO:
+                                with SocketIO(HOST_NODE, PORT_NODE, LoggingNamespace) as socketIO:
                                     socketIO.emit('modificar-pedido', {
                                                   'pedido': lista[0], 'tipo': 1, 'retraso': lista[0]['retraso']})
                                     socketIO.wait(seconds=0)
@@ -623,8 +622,9 @@ class WsPedidoEmpresa(View):
         try:
             resp = json.loads(request.body.decode('utf-8'))['token']
         except:
-            return HttpResponse('{"r":"Error en el token"}', content_type="application/json", status=403)
+            return HttpResponse('{"r":"Error en el token"}', content_type="application/json", status=203)
         # end try
+        print resp
         if resp:
             tienda = mod_usuario.Tienda.objects.filter(token=resp).first()
             if tienda:
@@ -635,7 +635,7 @@ class WsPedidoEmpresa(View):
                 lista = json.loads(row[0])
                 if lista['respuesta']:
                     if len(lista['pedidos']) > 0:
-                        with SocketIO('104.236.33.228', 4000, LoggingNamespace) as socketIO:
+                        with SocketIO(HOST_NODE, PORT_NODE, LoggingNamespace) as socketIO:
                             socketIO.emit('add-pedido', {
                                           'pedidos': lista['pedidos'], 'tipo': 2, 'retraso': lista['retardo']})
                             socketIO.wait(seconds=0)
@@ -650,7 +650,7 @@ class WsPedidoEmpresa(View):
                 return HttpResponse(json.dumps(lista), content_type="application/json")
             # end if
         # end if
-        return HttpResponse('{"r":"Error en el token"}', content_type="application/json", status=403)
+        return HttpResponse('{"r":"Error en el token 2"}', content_type="application/json", status=403)
     # end def
 # end class
 
@@ -1063,7 +1063,7 @@ class WsPedidoReactivar(View):
                         lista = row[0]
                     # end try
                     if lista:
-                        with SocketIO('104.236.33.228', 4000, LoggingNamespace) as socketIO:
+                        with SocketIO(HOST_NODE, PORT_NODE, LoggingNamespace) as socketIO:
                             socketIO.emit('asignar-pedido', {
                                           'pedido': lista[0]['f3'][0], 'tipo': 1, 'retraso': lista[0]['f3'][0]['retraso']})
                             socketIO.wait(seconds=0)
@@ -1096,6 +1096,42 @@ class WsInfoPedido(View):
             # end if
         # end if
         return HttpResponse('{"r":false}', content_type="application/json")
+    # end def
+# end class
+
+
+class TablaCancelados(View):
+
+    @method_decorator(csrf_exempt)
+    def get(self, request):
+        length = request.GET.get('length', '0')
+        order = request.GET.get('order[0][dir]', 0)
+        busqueda = request.GET.get('columns[1][search][value]', '')
+        start = int(request.GET.get('start', 0))
+        search = request.GET.get('search[value]', '')
+        cursor = connection.cursor()
+        m = 'select tabla_pedidos_cancelados(%d,\'%s\'::text,%s::integer,%s::integer)' % (
+            request.user.id if request.user else 0 , search, start, length)
+        cursor.execute(m)
+        row = cursor.fetchone()
+        print row
+        return HttpResponse(row[0], content_type="application/json")
+    # end def
+# end def
+
+
+class MotCancelacion(supra.SupraListView):
+    model = models.MotivoCancelacion
+    search = 'q'
+    list_display = ['id','nombre']
+    search_fields = ['configuracion__empresa__empleado__motorizado__identifier']
+    list_filter = ['configuracion__empresa__empleado__motorizado__identifier']
+    paginate_by = 100
+
+    def get_queryset(self):
+        queryset = super(MotCancelacion, self).get_queryset()
+        iden = self.request.GET.get('q','000')
+        return models.MotivoCancelacion.objects.filter(configuracion__empresa__empleado__motorizado__identifier=iden)
     # end def
 # end class
 
